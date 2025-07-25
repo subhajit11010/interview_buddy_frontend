@@ -150,7 +150,7 @@
             if (status) {
                 console.log("OK", status);
                 console.log("domain", domain.value);
-                const res = await fetch('http://127.0.0.1:5000/info', {
+                const res = await fetch('https://interview-buddy-backend.onrender.com/info', {
                     method: "POST",
                     headers: {
                         'Content-Type': 'application/json'

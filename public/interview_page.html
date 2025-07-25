@@ -270,7 +270,7 @@
             }
             system_action_icon.src = "../res/think.png";
             system_action_text.textContent = "thinking...";
-            const res = await fetch("http://127.0.0.1:5000/chat", {
+            const res = await fetch("https://interview-buddy-backend.onrender.com/chat", {
                 method: "POST",
                 headers: {
                     'Content-Type': 'application/json'
