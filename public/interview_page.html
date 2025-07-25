@@ -32,7 +32,7 @@
             <div class="left_pan">
                 <div id="vid">
                     <div id="person-icon-con">
-                        <img src="./public/person_icon.png" alt="person icon" id="person-icon">
+                        <img src="../res/person_icon.png" alt="person icon" id="person-icon">
                     </div>
                     <video id="camera" autoplay muted playsinline></video>
                     <canvas id="overlay"></canvas>
@@ -75,13 +75,13 @@
                     <input type="text" placeholder="Write your responses here..." id="chat-input">
                     <button id="send-message"
                         style="background-color: white; outline-color: white; border-color: white;"><img
-                            src="./public/send_icon.jpg" alt="send"
+                            src="../res/send_icon.jpg" alt="send"
                             style="display: block; object-fit: contain; width: 90%; height: 90%;"></button>
                 </div>
             </div>
             <div class="retro">
                 <div id="system-action">
-                    <img src="./public/mic.png" alt="thinking" id="system-action-icon">
+                    <img src="../res/mic.png" alt="thinking" id="system-action-icon">
                     <p id="system-action-text">thinking...</p>
                 </div>
                 <canvas id="audio-visualiser"></canvas>
@@ -188,7 +188,7 @@
             interview_params = JSON.parse(localStorage.getItem('parameters'));
             timeleft = parseInt(interview_params['duration']) * 60;
             userLang = interview_params['lang'];
-            userResponseAudio = new Audio("./public/userResponse1.mp3");
+            userResponseAudio = new Audio("../res/userResponse1.mp3");
 
             isListening = true;
             if (!SpeechRecognition) {
@@ -268,7 +268,7 @@
             if (!chat_container.classList.contains('display')) {
                 chat_container.classList.add('display');
             }
-            system_action_icon.src = "./public/think.png";
+            system_action_icon.src = "../res/think.png";
             system_action_text.textContent = "thinking...";
             const res = await fetch("http://127.0.0.1:5000/chat", {
                 method: "POST",
@@ -283,7 +283,7 @@
         }
 
         function getUserResponse() {
-            system_action_icon.src = "./public/view.png";
+            system_action_icon.src = "../res/view.png";
             system_action_text.textContent = "viewing...";
             userResponseAudio.play();
             return new Promise((resolve) => {
@@ -298,7 +298,7 @@
                         isListening = true;
                         try {
                             await startRecognitionAsync();
-                            system_action_icon.src = "./public/mic.png";
+                            system_action_icon.src = "../res/mic.png";
                             system_action_text.textContent = "listening...";
                             startSilenceTimer(recognition);
                             await waitForSilence();
@@ -365,7 +365,7 @@
                     clearInterval(monitor);
                     resolve();
                 };
-                system_action_icon.src = "./public/speak.png";
+                system_action_icon.src = "../res/speak.png";
                 system_action_text.textContent = "speaking...";
                 speechSynthesis.speak(utterance);
             });
@@ -388,7 +388,7 @@
                         isListening = true;
                         try {
                             await startRecognitionAsync();
-                            system_action_icon.src = "./public/mic.png";
+                            system_action_icon.src = "../res/mic.png";
                             system_action_text.textContent = "listening...";
                             startSilenceTimer(recognition);
                             await waitForSilence();
@@ -783,9 +783,9 @@
         });
 
         Promise.all([
-            faceapi.nets.tinyFaceDetector.loadFromUri('./models/tiny_face_detector_model'),
-            faceapi.nets.faceLandmark68Net.loadFromUri('./models/face_landmark_68_model'),
-            faceapi.nets.faceExpressionNet.loadFromUri('./models/face_expression_model')
+            faceapi.nets.tinyFaceDetector.loadFromUri('../models/tiny_face_detector_model'),
+            faceapi.nets.faceLandmark68Net.loadFromUri('../models/face_landmark_68_model'),
+            faceapi.nets.faceExpressionNet.loadFromUri('../models/face_expression_model')
         ]).then(() => {
             console.log("OK");
         });
