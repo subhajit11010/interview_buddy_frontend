@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preferences</title>
+    <link rel="stylesheet" href="info.css">
+</head>
+
+<body>
+    <div id="container">
+        <h2>Choose your preferences</h2>
+        <form action="" id="form">
+            <div id="choose_model_con">
+                <label for="choose_model" style="font-size: 1rem; margin-right: 2rem;">Model</label>
+                <select id="model" name="choose_model" required>
+                    <option value="gemini" selected>Gemini</option>
+                    <!-- <option value="chatgpt">ChatGPT</option>
+                    <option value="anthropic">Anthropic</option>
+                    <option value="groq">Groq</option>
+                    <option value="mistral">Mistral</option> -->
+                </select>
+            </div>
+            <div id="model_api_con">
+                <label for="model_api" style="font-size: 1rem; margin-right: 2rem;">API key</label>
+                <input type="text" name="model_api" id="model_api" placeholder="Enter your model api key" required>
+            </div>
+            <div id="lang_con">
+                <label for="lang" style="font-size: 1rem; margin-right: 2rem;">Language</label>
+                <select name="lang" id="lang">
+                    <option value="en-US" selected>English (US)</option>
+                    <!-- <option value="bn-IN">Bengali (India)</option> -->
+                    <option value="es-ES">Spanish (Spain)</option>
+                    <option value="fr-FR">French (France)</option>
+                    <option value="de-DE">German (Germany)</option>
+                    <option value="hi-IN">Hindi (India)</option>
+                    <option value="zh-CN">Chinese (Mandarin)</option>
+                    <option value="ja-JP">Japanese</option>
+                    <option value="ru-RU">Russian</option>
+                    <option value="ar-SA">Arabic (Saudi Arabia)</option>
+                    <option value="pt-BR">Portuguese (Brazil)</option>
+                </select>
+            </div>
+            <div id="interview_type_con">
+                <h3 style="align-self: center; margin-top: 0.5rem;">Interview Type</h3>
+                <div id="choose_interview_type">
+                    <div class="interview_type" data-domain="tech">Technical</div>
+                    <div class="interview_type" data-domain="hr">Behavioral (HR)</div>
+                </div>
+            </div>
+            <div id="choose_domain_con" class="hide">
+                <label for="choose_domain" style="font-size: 1rem; margin-right: 2rem;">Domain</label>
+                <select name="domain" id="choose_domain">
+                    <option value="ml">Machine Learning</option>
+                    <option value="ds">Data Science</option>
+                    <option value="bd">Backend Development</option>
+                    <option value="fd">Frontend Development</option>
+                    <option value="mlops">MLOps</option>
+                    <option value="dops">DevOps</option>
+                    <option value="mapp">Mobile Application Development</option>
+                </select>
+            </div>
+            <div id="duration_con">
+                <h3 style="align-self: center; margin-top: 0.5rem;">Duration</h3>
+                <div id="choose_duration">
+                    <div class="duration" data-duration="1">1 min</div>
+                    <div class="duration" data-duration="5">5 min</div>
+                    <div class="duration" data-duration="10">10 min</div>
+                    <div class="duration" data-duration="15">15 min</div>
+                    <div class="duration" data-duration="20">20 min</div>
+                    <div class="duration" data-duration="45">45 min</div>
+                </div>
+            </div>
+            <input type="submit" id="submit" value="Proceed">
+        </form>
+    </div>
+    <script>
+        const submit = document.getElementById('submit');
+        const model = document.getElementById('model');
+        const model_api = document.getElementById('model_api');
+        const interview_types = document.querySelectorAll('.interview_type');
+        const durations = document.querySelectorAll('.duration');
+        const domain_container = document.getElementById('choose_domain_con');
+        const domain = document.getElementById("choose_domain");
+        const lang = document.getElementById('lang');
+        let selected_interview_type = null;
+        let interview_type_val = null;
+        let selected_duration = null;
+        let duration_val = null;
+        let status = null;
+
+        interview_types.forEach(type => {
+            type.addEventListener('click', () => {
+                if (selected_interview_type) {
+                    selected_interview_type.classList.remove('selected');
+                }
+                type.classList.add('selected');
+                selected_interview_type = type;
+                interview_type_val = type.dataset.domain;
+                if(type.dataset.domain === "tech"){
+                    domain_container.classList.remove('hide');
+                }
+                else{
+                    domain_container.classList.add('hide');
+                    domain.value = "";
+                }
+            });
+        });
+
+        durations.forEach(duration => {
+            duration.addEventListener('click', () => {
+                if (selected_duration) {
+                    selected_duration.classList.remove('selected');
+                }
+                duration.classList.add('selected');
+                selected_duration = duration;
+                duration_val = duration.dataset.duration;
+            });
+        });
+
+        function checkForm() {
+            if (model.value == "gemini") {
+                if (model_api.value.slice(0, 4) == "AIza" && model_api.value.length == 39) {
+                    // console.log("OK");
+                }
+                else {
+                    status = 0;
+                    return;
+                }
+            }
+            else {
+                status = 0;
+                return;
+            }
+            if (duration_val != null && interview_type_val != null) {
+                status = 1;
+                return;
+                // console.log("OK"); 
+            }
+            else {
+                status = 0;
+                return;
+            }
+
+        }
+        submit.addEventListener('click', async (event) => {
+            event.preventDefault();
+            checkForm();
+            if (status) {
+                console.log("OK", status);
+                console.log("domain", domain.value);
+                const res = await fetch('http://127.0.0.1:5000/info', {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: model.value,
+                        api: model_api.value,
+                        lang: lang.value,
+                        type: interview_type_val,
+                        domain: domain.value,
+                        duration: duration_val
+                    })
+                });
+                const data = await res.json();
+                localStorage.setItem('parameters', JSON.stringify({type: interview_type_val, lang: lang.value, domain: domain.value, duration: duration_val}));
+                console.log(data.response);
+
+                window.location.href = 'interview_page.html';
+            }
+            else {
+                console.log("NOPE");
+
+            }
+        });
+    </script>
+</body>
+
+</html>

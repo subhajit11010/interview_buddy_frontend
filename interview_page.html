@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interview</title>
+    <link rel="stylesheet" href="interview_page.css">
+    <!-- <script defer src="https://unpkg.com/face-api.js"></script> -->
+</head>
+
+<body oncontextmenu="return false;">
+    <div class="container">
+        <div class="menu">
+            <div id="statusContainer">
+                <div id="rippleContainer" class="ripple-container ">
+                    <div class="ripple-indicator"></div>
+                </div>
+                <p style="margin-left: 0.5rem;">System is live</p>
+            </div>
+            <div id="timer-con">
+                <h2 id="timer" style="font-size: 1.3rem; color: white; text-align: center;"></h2>
+            </div>
+
+            <div id="leave-con">
+                <p id="writing-mode"></p>
+                <button id="leave">Leave</button>
+            </div>
+
+        </div>
+        <div class="interview_section">
+            <div class="left_pan">
+                <div id="vid">
+                    <div id="person-icon-con">
+                        <img src="./public/person_icon.png" alt="person icon" id="person-icon">
+                    </div>
+                    <video id="camera" autoplay muted playsinline></video>
+                    <canvas id="overlay"></canvas>
+                </div>
+                <div id="toggle-con">
+                    <div id="toggle-audio-con">
+                        <label>Audio</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="toggle-audio">
+                            <div class="toggle-switch-background">
+                                <div class="toggle-switch-handle"></div>
+                            </div>
+                        </label>
+                    </div>
+                    <div id="toggle-video-con">
+                        <label>Video</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="toggle-video">
+                            <div class="toggle-switch-background">
+                                <div class="toggle-switch-handle"></div>
+                            </div>
+                        </label>
+                    </div>
+
+                </div>
+                <div id="emotion-con" class="hide">
+                    <p id="emotion"></p>
+                </div>
+
+                <p id="transcript-area" style="color: white;"></p>
+                <p id="video-status" style="color: white;"></p>
+            </div>
+            <div class="messaging_section">
+                <div id="chat">
+                    <p>Chat</p>
+                    <!-- <hr> -->
+                </div>
+                <div id="messages"></div>
+                <div id="write-chat">
+                    <input type="text" placeholder="Write your responses here..." id="chat-input">
+                    <button id="send-message"
+                        style="background-color: white; outline-color: white; border-color: white;"><img
+                            src="./public/send_icon.jpg" alt="send"
+                            style="display: block; object-fit: contain; width: 90%; height: 90%;"></button>
+                </div>
+            </div>
+            <div class="retro">
+                <div id="system-action">
+                    <img src="./public/mic.png" alt="thinking" id="system-action-icon">
+                    <p id="system-action-text">thinking...</p>
+                </div>
+                <canvas id="audio-visualiser"></canvas>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.7/dist/face-api.min.js"></script>
+    <script>
+        const video = document.getElementById('camera');
+        const video_status = document.getElementById('video-status');
+        const canvas = document.getElementById('overlay');
+        const context = canvas.getContext('2d');
+        const chat_container = document.getElementById('write-chat');
+        const chat = document.getElementById('chat-input');
+        const messages = document.getElementById('messages');
+        const sendbtn = document.getElementById('send-message');
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const transcript_area = document.getElementById('transcript-area');
+        const audio_visualiser_canvas = document.getElementById('audio-visualiser');
+        audio_visualiser_canvas.style.width = "90%";
+        audio_visualiser_canvas.style.height = "150px";
+        audio_visualiser_canvas.style.backgroundColor = '#000000';
+        audio_visualiser_canvas.style.marginBottom = "1rem";
+        const audio_visualiser_ctx = audio_visualiser_canvas.getContext('2d');
+        const timer = document.getElementById('timer');
+        const toggle_video = document.getElementById('toggle-video');
+        const toggle_audio = document.getElementById('toggle-audio');
+        const writing_mode_status = document.getElementById('writing-mode');
+        const emotion = document.getElementById('emotion');
+        const emotion_container = document.getElementById('emotion-con');
+        const ripple_container = document.getElementById('rippleContainer');
+        const person_icon_container = document.getElementById('person-icon-con');
+        const leave = document.getElementById('leave');
+        const system_action_text = document.getElementById('system-action-text');
+        const system_action_icon = document.getElementById('system-action-icon');
+        let isListening = false; // the listening flag
+        let recognition_started = false;
+        let silenceTimeoutId;
+        const SILENCE_THRESHOLD_MS = 5000;
+        let recognition = null;
+        let timeleft = null;
+        let interview_params = null;
+        let currentStream = null;
+        let audioStream = null;
+        let videoStream = null;
+        let user_response = "";
+        let user_responded = false;
+        let interview_ended = false;
+        let leave_interview = false;
+        let userLang = 'en-US';
+
+        let audioContext;
+        let analyser;
+        let dataArray;
+        let animationFrameId;
+        let detectionInterval;
+
+        let userResponseAudio = null;
+        let conversation_history = "";
+        let devtoolsOpen = false;
+
+        // setInterval(() => {
+        //     const devtools = new Function("return (function(){/*debug*/}).toString().length !== 33")();
+        //     if (devtools && !devtoolsOpen) {
+        //         devtoolsOpen = true;
+        //         try {
+        //             toggle_audio.checked = false;
+        //             toggle_video.checked = false;
+        //             isListening = false;
+        //             if (recognition) recognition.stop();
+        //             recognition = null;
+
+        //             if (videoStream) {
+        //                 videoStream.getTracks().forEach(track => track.stop());
+        //                 videoStream = null;
+        //                 video.srcObject = null;
+        //                 context.clearRect(0, 0, canvas.width, canvas.height);
+        //                 if (detectionInterval) {
+        //                     clearInterval(detectionInterval);
+        //                     detectionInterval = null;
+        //                 }
+        //             }
+        //             if (audioStream) {
+        //                 stopVisualizer();
+        //                 audioStream.getTracks().forEach(track => track.stop());
+        //                 audioStream = null;
+        //             }
+        //         } catch (e) {
+        //             console.error("Cleanup error:", e);
+        //         }
+        //         window.location.href = "dashboard.html";
+        //     }
+        //     if (!devtools && devtoolsOpen) {
+        //         devtoolsOpen = false;
+        //     }
+        // }, 500);
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "F12" || e.key === "F11" || (e.ctrlKey && e.shiftKey && e.key === "I") || (e.ctrlKey && e.shiftKey && e.key === "C") || (e.ctrlKey && e.key === "u") || (e.ctrlKey && e.key === "s") || (e.ctrlKey && e.key === "U") || (e.ctrlKey && e.key === "S")) {
+                e.preventDefault();
+            }
+        });
+        document.addEventListener("DOMContentLoaded", async () => {
+            interview_params = JSON.parse(localStorage.getItem('parameters'));
+            timeleft = parseInt(interview_params['duration']) * 60;
+            userLang = interview_params['lang'];
+            userResponseAudio = new Audio("./public/userResponse1.mp3");
+
+            isListening = true;
+            if (!SpeechRecognition) {
+                console.log("Your Browser doesn't support Speech Recognition API!");
+            }
+            else {
+                recognition = new SpeechRecognition();
+                recognition.interimResults = true;
+                recognition.continuous = true;
+                recognition.lang = userLang;
+                let lastFinalTranscript = "";
+
+                recognition.onresult = (event) => {
+                    if (isListening) {
+                        startSilenceTimer(recognition);
+                    }
+                    let interimTranscript = '';
+                    let finalTranscript = '';
+
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        const transcript = event.results[i][0].transcript;
+                        if (event.results[i].isFinal) {
+                            finalTranscript += transcript + ' ';
+                        } else {
+                            interimTranscript += transcript;
+                        }
+                    }
+
+                    if (finalTranscript.trim() !== "") {
+                        if (!lastFinalTranscript.includes(finalTranscript.trim())) {
+                            user_response += finalTranscript;
+                            lastFinalTranscript += finalTranscript;
+                        }
+                    }
+
+                    // user_response += finalTranscript + interimTranscript;
+                    transcript_area.textContent = user_response + interimTranscript;
+                    console.log(user_response);
+
+                };
+                recognition.onend = (event) => {
+                    clearTimeout(silenceTimeoutId);
+                    if (isListening) {
+                        console.log("Restarting recognition...");
+                        recognition.start();
+                        startSilenceTimer(recognition);
+                    } else {
+                        console.log("Recognition stopped.");
+                    }
+                };
+
+                recognition.onerror = (event) => {
+                    clearTimeout(silenceTimeoutId);
+                    if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+                        console.log("Microphone access denied. Please enable it in your browser settings.");
+                    } else if (event.error === 'no-speech') {
+                        console.log("No speech detected. The service has timed out.");
+                    } else {
+                        console.log(`Error: ${event.error}`);
+                    }
+                    isListening = false;
+                };
+            }
+
+            await startCamera();
+            if (toggle_audio.checked || toggle_video.checked) {
+                startTimer();
+            }
+
+            startInterViewLoop();
+        });
+        function scrollToBottom() {
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        async function llmResponse(response) {
+            if (!chat_container.classList.contains('display')) {
+                chat_container.classList.add('display');
+            }
+            system_action_icon.src = "./public/think.png";
+            system_action_text.textContent = "thinking...";
+            const res = await fetch("http://127.0.0.1:5000/chat", {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ prompt: response })
+            });
+            const data = await res.json();
+            const question = data.response;
+            return question;
+        }
+
+        function getUserResponse() {
+            system_action_icon.src = "./public/view.png";
+            system_action_text.textContent = "viewing...";
+            userResponseAudio.play();
+            return new Promise((resolve) => {
+                const checkInterval = setInterval(async () => {
+                    if (timeleft <= 0 || leave_interview) {
+                        clearInterval(checkInterval);
+                        interview_ended = true;
+                        resolve();
+                    }
+                    if (toggle_audio.checked && !recognition_started) {
+                        recognition_started = true;
+                        isListening = true;
+                        try {
+                            await startRecognitionAsync();
+                            system_action_icon.src = "./public/mic.png";
+                            system_action_text.textContent = "listening...";
+                            startSilenceTimer(recognition);
+                            await waitForSilence();
+                            user_responded = true;
+                        }
+                        catch (error) {
+                            console.error("Recognition failed to start:", error);
+                        }
+                    }
+                    if (user_responded) {
+                        clearInterval(checkInterval);
+                        recognition_started = false
+                        resolve();
+                    }
+                }, 500);
+            });
+        }
+
+        function startRecognitionAsync() {
+            return new Promise((resolve, reject) => {
+                // const monitor = setInterval(() => {
+                //     if(!toggle_audio.checked){
+
+                //     }
+                // }, 500);
+                recognition.onstart = () => {
+                    // console.log("Speech recognition started");
+                    resolve();
+                };
+                recognition.onerror = (event) => {
+                    // console.error("Speech recognition error:", event.error);
+                    reject(event.error);
+                };
+                try {
+                    userResponseAudio.play();
+                    recognition.start();
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        }
+
+        function speakText(text) {
+            return new Promise((resolve) => {
+
+                if (timeleft <= 0) {
+                    interview_ended = true;
+                    resolve();
+                    return;
+                }
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = userLang;
+
+                const monitor = setInterval(() => {
+                    if (timeleft <= 0 || leave_interview) {
+                        interview_ended = true;
+                        speechSynthesis.cancel();
+                        clearInterval(monitor);
+                        resolve();
+                    }
+                }, 200);
+
+                utterance.onend = () => {
+                    clearInterval(monitor);
+                    resolve();
+                };
+                system_action_icon.src = "./public/speak.png";
+                system_action_text.textContent = "speaking...";
+                speechSynthesis.speak(utterance);
+            });
+        }
+
+        async function startInterViewLoop() {
+            let req_count = 0;
+            let question_num = 0;
+            ripple_container.classList.remove('hide');
+            ripple_container.classList.add('ripple-active');
+            while (timeleft > 0) {
+                if (leave_interview) {
+                    break;
+                }
+                let user_input = "";
+                user_response = "";
+                transcript_area.textContent = "";
+                if (req_count !== 0) {
+                    if (toggle_audio.checked) {
+                        isListening = true;
+                        try {
+                            await startRecognitionAsync();
+                            system_action_icon.src = "./public/mic.png";
+                            system_action_text.textContent = "listening...";
+                            startSilenceTimer(recognition);
+                            await waitForSilence();
+                            if (!toggle_audio.checked) {
+                                await getUserResponse();
+                                user_responded = false;
+                            }
+                        }
+                        catch (error) {
+                            console.error("Recognition failed to start:", error);
+                            continue;
+                        }
+                        if (interview_ended) {
+                            break;
+                        }
+                    } else {
+                        if (chat_container.classList.contains('display')) {
+                            chat_container.classList.remove('display');
+                        }
+                        await getUserResponse();
+                        if (interview_ended) {
+                            break;
+                        }
+                        user_responded = false;
+                    }
+
+                    user_input = user_response.trim();
+                    conversation_history += ` **Answer**: ${user_input}`;
+
+                    if (user_input.length > 0) {
+                        let temp = document.createElement('div');
+                        temp.classList.add("user-response");
+                        temp.textContent = user_input;
+                        messages.appendChild(temp);
+                        scrollToBottom();
+                    }
+                }
+
+                const question = await llmResponse(user_input);
+                question_num += 1;
+                conversation_history += ` **question** ${question_num}: **${question}**`;
+                await speakText(question);
+                if (leave_interview) {
+                    break;
+                }
+                if (!interview_ended) {
+                    let temp = document.createElement('div');
+                    temp.classList.add("system-response");
+                    temp.textContent = question;
+                    messages.appendChild(temp);
+                    scrollToBottom();
+                }
+
+                req_count += 1;
+            }
+            toggle_audio.checked = false;
+            toggle_video.checked = false;
+            isListening = false;
+            if (recognition) {
+                recognition.stop();
+            }
+            recognition = null;
+
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+                video.srcObject = null;
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                if (detectionInterval) {
+                    clearInterval(detectionInterval);
+                    detectionInterval = null;
+                }
+            }
+
+            if (audioStream) {
+                stopVisualizer();
+                audioStream.getTracks().forEach(track => track.stop());
+                audioStream = null;
+            }
+            console.log("interview ended.");
+            console.log(conversation_history);
+            if (!leave_interview) {
+                localStorage.setItem('conversation_his', conversation_history);
+                window.location.href = 'feedback.html';
+            }
+            else {
+                window.location.href = "dashboard.html";
+            }
+
+        }
+
+        toggle_audio.addEventListener('change', async function () {
+            if (this.checked && audioStream == null) {
+                try {
+                    audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    setupAudioVisualiser(audioStream);
+                    if (videoStream) {
+                        const combined = new MediaStream([...videoStream.getVideoTracks(), ...audioStream.getAudioTracks()]);
+                        currentStream = combined;
+                        video.srcObject = combined;
+                    }
+                    else {
+                        currentStream = audioStream;
+                    }
+                    chat_container.classList.add('display');
+                    writing_mode_status.textContent = "🔴 Writing Mode is Off";
+                }
+                catch (error) {
+                    console.error("Microphone access denied:", error);
+                    this.checked = false;
+                }
+
+            }
+            else if (!this.checked && audioStream) {
+                console.log("YES");
+                stopVisualizer();
+                audioStream.getTracks().forEach(track => track.stop());
+                audioStream = null;
+
+                if (videoStream) {
+                    currentStream = videoStream;
+                    video.srcObject = videoStream;
+                } else {
+                    video.srcObject = null;
+                    currentStream = null;
+                }
+                chat_container.classList.remove('display');
+                writing_mode_status.textContent = "🟢 Writing Mode is On";
+            }
+        });
+
+        toggle_video.addEventListener('change', async function () {
+            if (this.checked && videoStream == null) {
+                try {
+                    videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    if (audioStream) {
+                        const combined = new MediaStream([...videoStream.getVideoTracks(), ...audioStream.getAudioTracks()]);
+                        currentStream = combined;
+                        video.srcObject = combined;
+                    }
+                    else {
+                        currentStream = videoStream;
+                    }
+                    emotion_container.classList.remove('hide');
+                    person_icon_container.classList.add('hide');
+                } catch (error) {
+                    console.error("Camera access denied!!");
+                    this.checked = false;
+                }
+            }
+            else if (!this.checked && videoStream) {
+                console.log("Entered");
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+                video.srcObject = null;
+                emotion_container.classList.add('hide');
+                person_icon_container.classList.remove('hide');
+                console.log("worked");
+                if (detectionInterval) {
+                    clearInterval(detectionInterval);
+                    detectionInterval = null;
+                }
+
+                if (audioStream) {
+                    currentStream = audioStream;
+                }
+                else {
+                    currentStream = null;
+                }
+                context.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        });
+
+        function startTimer() {
+            const countdown = setInterval(() => {
+                let minutes = Math.floor(timeleft / 60);
+                let seconds = timeleft % 60;
+                timer.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                if (timeleft <= 0) {
+                    clearInterval(countdown);
+                    timer.textContent = "Time's Up!!";
+                } else {
+                    timeleft--;
+                }
+            }, 1000);
+        }
+
+        function drawVisualiser() {
+            animationFrameId = requestAnimationFrame(drawVisualiser);
+            analyser.getByteFrequencyData(dataArray);
+            audio_visualiser_ctx.clearRect(0, 0, audio_visualiser_canvas.width, audio_visualiser_canvas.height);
+            audio_visualiser_ctx.fillStyle = '#1a202c';
+            audio_visualiser_ctx.fillRect(0, 0, audio_visualiser_canvas.width, audio_visualiser_canvas.height);
+            // chunking
+            let modDataArray = [];
+            const numChunks = 50;
+            const chunkSize = dataArray.length / numChunks;
+            for (let i = 0; i < numChunks; i++) {
+                modDataArray.push(dataArray.slice(i * chunkSize, (i + 1) * chunkSize));
+            }
+            // drawing the bars
+            const barWidth = audio_visualiser_canvas.width / numChunks;
+            for (let i = 0; i < numChunks; i++) {
+                const max = Math.max(...modDataArray[i]);
+                const min = Math.min(...modDataArray[i]);
+                const barHeight = ((max + min) / 255) * audio_visualiser_canvas.height;
+                audio_visualiser_ctx.fillStyle = `hsl(${barHeight + 180}, 100%, 50%)`;
+                audio_visualiser_ctx.fillRect(barWidth * i, audio_visualiser_canvas.height - barHeight, barWidth - 1, barHeight);
+            }
+        }
+        function stopVisualizer() {
+            cancelAnimationFrame(animationFrameId);
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+            audio_visualiser_ctx.clearRect(0, 0, audio_visualiser_canvas.width, audio_visualiser_canvas.height);
+        }
+        function setupAudioVisualiser(stream) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+            const source = audioContext.createMediaStreamSource(stream);
+            analyser.fftSize = 256;
+            const bufferLength = analyser.frequencyBinCount;
+            dataArray = new Uint8Array(bufferLength);
+            source.connect(analyser);
+            drawVisualiser();
+        }
+
+        // now the navigator api for media streaming
+        async function startCamera() {
+
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                video_status.textContent = "😭 Your browser does not support the MediaDevices API.";
+                return;
+            }
+            video_status.innerHTML = "Requesting microphone access...";
+
+            // first I will try to access the microphone
+            try {
+                audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                video_status.innerHTML = "✅ Microphone access granted!!";
+                toggle_audio.checked = true;
+                setupAudioVisualiser(audioStream);
+            } catch (error) {
+                console.warn("Microphone access denied:", error);
+                video_status.innerHTML = "❌ Microphone access denied!";
+                toggle_audio.checked = false;
+            }
+
+            // now I will try to access the camera
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video_status.innerHTML += "<br>✅ Camera access granted!!";
+                toggle_video.checked = true;
+                currentStream = videoStream;
+                video.srcObject = videoStream;
+            } catch (error) {
+                console.warn("Camera access denied:", error);
+                video_status.innerHTML += "<br>❌ Camera access denied!";
+            }
+
+            if (audioStream && videoStream) {
+                const combined = new MediaStream([...videoStream.getVideoTracks(), ...audioStream.getAudioTracks()]);
+                video.srcObject = combined;
+                currentStream = combined;
+                emotion_container.classList.remove('hide');
+                person_icon_container.classList.add('hide');
+                // recognition.start();
+                toggle_audio.checked = true;
+                toggle_video.checked = true;
+                chat_container.classList.add('display');
+                writing_mode_status.textContent = "🔴 Writing Mode is Off";
+
+            } else if (audioStream) {
+                currentStream = audioStream;
+                // recognition.start();
+                video.srcObject = null;
+                toggle_audio.checked = true;
+                toggle_video.checked = false;
+                chat_container.classList.add('display');
+                writing_mode_status.textContent = "🔴 Writing Mode is Off";
+            } else if (videoStream) {
+                currentStream = videoStream;
+                video.srcObject = videoStream;
+                emotion_container.classList.remove('hide');
+                person_icon_container.classList.add('hide');
+                toggle_audio.checked = false;
+                toggle_video.checked = true;
+                chat_container.classList.remove('display');
+                writing_mode_status.textContent = "🟢 Writing Mode is On";
+            }
+        }
+
+        // function stopVideoAndDetection() {
+        //     if (currentStream) {
+        //         currentStream.getVideoTracks().forEach(track => track.stop());
+        //         video.srcObject = null;
+
+        //         if (detectionInterval) {
+        //             clearInterval(detectionInterval);
+        //             detectionInterval = null;
+        //         }
+        //         context.clearRect(0, 0, canvas.width, canvas.height);
+        //         videoOff = 1;
+        //     }
+        // }
+        // async function startVideoAndDetection() {
+        //     try {
+        //         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        //         const audioTracks = currentStream ? currentStream.getAudioTracks() : [];
+        //         currentStream = new MediaStream([...audioTracks, ...stream.getVideoTracks()]);
+
+        //         video.srcObject = currentStream;
+        //         video.play()
+        //         videoOff = 0;
+        //     }
+        //     catch (err) {
+        //         console.error("Failed to start video:", err);
+        //     }
+        // }
+        // toggle_button.addEventListener('click', () => {
+        //     if (videoOff === 0) {
+        //         stopVideoAndDetection();
+        //     }
+        //     else {
+        //         startVideoAndDetection();
+        //     }
+        // });
+
+        function startSilenceTimer(recognition) {
+            clearTimeout(silenceTimeoutId);
+            silenceTimeoutId = setTimeout(() => {
+                if (isListening) {
+                    recognition.stop();
+                    isListening = false;
+                    console.log(`Silence Detected for ${SILENCE_THRESHOLD_MS / 1000} seconds. Recognition stopped.`);
+                }
+            }, SILENCE_THRESHOLD_MS);
+        }
+
+        function waitForSilence() {
+            return new Promise((resolve) => {
+                const checkInterval = setInterval(() => {
+                    if (timeleft <= 0 || leave_interview) {
+                        interview_ended = true;
+                        resolve();
+                    }
+                    if (!toggle_audio.checked) {
+                        clearTimeout(silenceTimeoutId);
+                        recognition.stop();
+                        isListening = false;
+                        clearInterval(checkInterval);
+                        resolve();
+                    }
+                    if (!isListening) {
+                        clearInterval(checkInterval);
+                        resolve();
+                    }
+                }, 200);
+            });
+        }
+
+        video.addEventListener('loadedmetadata', () => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+        });
+
+        video.addEventListener('play', async () => {
+            const displaySize = { width: video.videoWidth, height: video.videoHeight };
+            faceapi.matchDimensions(canvas, displaySize);
+
+            detectionInterval = setInterval(async () => {
+                const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+                    .withFaceLandmarks()
+                    .withFaceExpressions();
+
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                if (detections) {
+                    const resized = faceapi.resizeResults(detections, displaySize);
+                    faceapi.draw.drawFaceLandmarks(canvas, resized);
+
+                    const expressions = detections.expressions;
+                    const maxEmotion = Object.keys(expressions).reduce((a, b) =>
+                        expressions[a] > expressions[b] ? a : b
+                    );
+                    emotion.textContent = `Emotion: ${maxEmotion} (${expressions[maxEmotion].toFixed(2)})`;
+                    // console.log("Detected Emotion:", maxEmotion, expressions[maxEmotion].toFixed(2));
+                    // console.log(detections);
+                }
+            }, 100);
+        });
+
+        Promise.all([
+            faceapi.nets.tinyFaceDetector.loadFromUri('./models/tiny_face_detector_model'),
+            faceapi.nets.faceLandmark68Net.loadFromUri('./models/face_landmark_68_model'),
+            faceapi.nets.faceExpressionNet.loadFromUri('./models/face_expression_model')
+        ]).then(() => {
+            console.log("OK");
+        });
+        chat.addEventListener('keypress', (event) => {
+            if (event.key === "Enter") {
+                user_responded = true;
+                event.preventDefault();
+                if (chat.value != null && chat.value != undefined && chat.value.trim() != "") {
+                    user_response = chat.value;
+                    chat.value = "";
+                    scrollToBottom();
+                }
+                else {
+                    user_response = "";
+                }
+            }
+        });
+        sendbtn.addEventListener('click', () => {
+            user_responded = true;
+            if (chat.value != null && chat.value != undefined && chat.value.trim() != "") {
+                user_response = chat.value;
+                chat.value = "";
+                scrollToBottom();
+            }
+            else {
+                user_response = "";
+            }
+        });
+        leave.addEventListener('click', () => {
+            leave_interview = true;
+        });
+    </script>
+</body>
+
+</html>
