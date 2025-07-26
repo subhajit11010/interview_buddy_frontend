@@ -2,6 +2,15 @@
 <html lang="en">
 
 <head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-N445N6Q2NT"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+
+        gtag('config', 'G-N445N6Q2NT');
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Preferences</title>
@@ -98,10 +107,10 @@
                 type.classList.add('selected');
                 selected_interview_type = type;
                 interview_type_val = type.dataset.domain;
-                if(type.dataset.domain === "tech"){
+                if (type.dataset.domain === "tech") {
                     domain_container.classList.remove('hide');
                 }
-                else{
+                else {
                     domain_container.classList.add('hide');
                     domain.value = "";
                 }
@@ -165,7 +174,7 @@
                     })
                 });
                 const data = await res.json();
-                localStorage.setItem('parameters', JSON.stringify({type: interview_type_val, lang: lang.value, domain: domain.value, duration: duration_val}));
+                localStorage.setItem('parameters', JSON.stringify({ type: interview_type_val, lang: lang.value, domain: domain.value, duration: duration_val }));
                 console.log(data.response);
 
                 window.location.href = 'interview_page.html';

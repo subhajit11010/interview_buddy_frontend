@@ -2,6 +2,15 @@
 <html lang="en">
 
 <head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-N445N6Q2NT"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+
+        gtag('config', 'G-N445N6Q2NT');
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interview Buddy - Your Feedback</title>
@@ -56,7 +65,7 @@
 
         document.addEventListener("DOMContentLoaded", async () => {
             feedback_con.classList.remove("display");
-            feedback_con.style.visibility = "hidden"; 
+            feedback_con.style.visibility = "hidden";
 
             conv_his = localStorage.getItem('conversation_his');
 
@@ -67,8 +76,8 @@
                                         <a href="index.html" class="btn-primary mt-6">Start a New Practice</a>
                                     </div>`;
                 feedback_con.innerHTML = feedbackContent;
-                loader_con.classList.add("hide"); 
-                feedback_con.classList.add("display"); 
+                loader_con.classList.add("hide");
+                feedback_con.classList.add("display");
                 feedback_con.style.visibility = "visible";
                 return;
             }
@@ -85,10 +94,10 @@
                                         </div>`;
             }
 
-            
+
             setTimeout(() => {
-                loader_con.classList.add("hide"); 
-                feedback_con.classList.add("display"); 
+                loader_con.classList.add("hide");
+                feedback_con.classList.add("display");
                 feedback_con.style.visibility = "visible";
             }, 300);
         });
