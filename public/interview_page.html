@@ -365,7 +365,13 @@
                 const monitor = setInterval(() => {
                     if (timeleft <= 0 || leave_interview) {
                         interview_ended = true;
-                        speechSynthesis.cancel();
+                        if (speechSynthesis.speaking || speechSynthesis.pending) {
+                            setTimeout(() => {
+                                const blank = new SpeechSynthesisUtterance('');
+                                speechSynthesis.speak(blank);
+                                speechSynthesis.cancel();
+                            }, 0);
+                        }
                         clearInterval(monitor);
                         resolve();
                     }
